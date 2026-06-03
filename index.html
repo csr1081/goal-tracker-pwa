@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="My Goals" />
+  <meta name="theme-color" content="#1D9E75" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <title>My Goals</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --accent: #1D9E75;
+      --accent-light: #E1F5EE;
+      --accent-dark: #085041;
+      --purple: #534AB7;
+      --purple-light: #EEEDFE;
+      --purple-dark: #26215C;
+      --amber: #BA7517;
+      --amber-light: #FAEEDA;
+      --coral: #D85A30;
+      --coral-light: #FAECE7;
+      --green: #3B6D11;
+      --green-light: #EAF3DE;
+      --pink: #993556;
+      --pink-light: #FBEAF0;
+      --bg: #F2F2F7;
+      --card: #FFFFFF;
+      --text: #1C1C1E;
+      --text2: #6C6C70;
+      --text3: #AEAEB2;
+      --border: rgba(60,60,67,0.12);
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1C1C1E;
+        --card: #2C2C2E;
+        --text: #FFFFFF;
+        --text2: #AEAEB2;
+        --text3: #6C6C70;
+        --border: rgba(255,255,255,0.1);
+      }
+    }
+    html, body { height: 100%; background: var(--bg); font-family: -apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif; color: var(--text); overflow: hidden; }
+
+    #app { display: flex; flex-direction: column; height: 100%; max-width: 430px; margin: 0 auto; }
+
+    /* Header */
+    .header {
+      background: var(--card);
+      padding: calc(var(--safe-top) + 12px) 20px 12px;
+      border-bottom: 0.5px solid var(--border);
+      flex-shrink: 0;
+    }
+    .header-row { display: flex; align-items: center; justify-content: space-between; }
+    .header h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+    .header-date { font-size: 13px; color: var(--text2); margin-top: 2px; }
+    .badge { background: var(--accent-light); color: var(--accent-dark); font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 20px; }
+
+    /* Content */
+    .content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: calc(var(--safe-bottom) + 70px); }
+
+    /* Bottom nav */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 430px;
+      background: var(--card);
+      border-top: 0.5px solid var(--border);
+      display: flex;
+      padding-bottom: var(--safe-bottom);
+      z-index: 50;
+    }
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 8px 4px 6px; cursor: pointer; gap: 3px; }
+    .nav-icon { font-size: 22px; }
+    .nav-label { font-size: 10px; font-weight: 500; color: var(--text3); }
+    .nav-item.active .nav-label { color: var(--accent); }
+    .nav-item.active .nav-icon { filter: none; }
+    .nav-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); display: none; }
+    .nav-item.active .nav-dot { display: block; }
+
+    /* Views */
+    .view { display: none; padding: 16px; }
+    .view.active { display: block; }
+
+    /* Section label */
+    .section-label { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.7px; margin: 16px 0 8px; }
+
+    /* Goal cards */
+    .goal-card {
+      background: var(--card); border-radius: 14px; padding: 14px 16px;
+      margin-bottom: 10px; cursor: pointer; transition: transform 0.1s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .goal-card:active { transform: scale(0.98); }
+    .goal-row { display: flex; align-items: center; gap: 12px; }
+    .goal-emoji { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+    .goal-info { flex: 1; min-width: 0; }
+    .goal-title { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .goal-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+    .goal-pct { font-size: 15px; font-weight: 700; flex-shrink: 0; }
+    .prog-bar { height: 5px; background: var(--border); border-radius: 3px; margin-top: 10px; overflow: hidden; }
+    .prog-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+    .streak { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 20px; }
+
+    /* Time tracker */
+    .time-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .time-title { font-size: 17px; font-weight: 600; }
+    .clear-btn { font-size: 13px; color: var(--accent); background: none; border: none; cursor: pointer; font-family: inherit; }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
+    .leg-dot { width: 8px; height: 8px; border-radius: 4px; }
+    .time-grid { display: grid; grid-template-columns: 56px 1fr; gap: 2px 0; }
+    .t-label { font-size: 11px; color: var(--text3); text-align: right; padding-right: 10px; line-height: 30px; }
+    .t-block {
+      height: 30px; border-radius: 8px; margin: 1px 0; display: flex; align-items: center;
+      padding: 0 10px; font-size: 11px; font-weight: 500; cursor: pointer;
+      border: 1px dashed var(--border); color: var(--text3); transition: all 0.15s;
+    }
+    .t-block.filled { border: none; color: white; font-weight: 600; }
+    .t-block.teal { background: var(--accent); }
+    .t-block.purple { background: var(--purple); }
+    .t-block.amber { background: var(--amber); }
+    .t-block.coral { background: var(--coral); }
+    .t-block.green { background: var(--green); }
+    .t-block.pink { background: var(--pink); }
+
+    /* Check-in */
+    .ci-card { background: var(--card); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .ci-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .ci-emoji { font-size: 24px; }
+    .ci-title { font-size: 15px; font-weight: 600; }
+    .ci-meta { font-size: 12px; color: var(--text2); }
+    .ci-q { font-size: 13px; color: var(--text2); margin-bottom: 8px; }
+    .ci-opts { display: flex; gap: 6px; flex-wrap: wrap; }
+    .ci-opt {
+      padding: 7px 14px; border-radius: 20px; font-size: 13px; font-weight: 500;
+      border: 1px solid var(--border); background: transparent; color: var(--text2);
+      cursor: pointer; font-family: inherit; transition: all 0.15s;
+    }
+    .ci-opt.yes { background: var(--accent-light); color: var(--accent-dark); border-color: var(--accent); }
+    .ci-opt.warn { background: var(--amber-light); color: var(--amber); border-color: var(--amber); }
+    .ci-opt.bad { background: #FCEBEB; color: #A32D2D; border-color: #A32D2D; }
+    .note-input {
+      width: 100%; margin-top: 10px; border: 1px solid var(--border); border-radius: 10px;
+      padding: 9px 12px; font-size: 13px; font-family: inherit;
+      background: var(--bg); color: var(--text); resize: none;
+    }
+    .note-input:focus { outline: none; border-color: var(--accent); }
+    .save-btn {
+      width: 100%; padding: 14px; background: var(--accent); color: white;
+      border: none; border-radius: 14px; font-size: 16px; font-weight: 600;
+      cursor: pointer; font-family: inherit; margin-top: 4px; transition: opacity 0.15s;
+    }
+    .save-btn:active { opacity: 0.85; }
+
+    /* Stats */
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .stat-card { background: var(--card); border-radius: 14px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .stat-val { font-size: 26px; font-weight: 700; }
+    .stat-lbl { font-size: 12px; color: var(--text2); margin-top: 2px; }
+    .review-card { background: var(--card); border-radius: 14px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 10px; }
+    .week-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .week-bar-name { font-size: 12px; color: var(--text2); width: 36px; flex-shrink: 0; }
+    .week-bar-track { flex: 1; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+    .week-bar-fill { height: 100%; border-radius: 4px; }
+    .week-bar-count { font-size: 11px; color: var(--text3); width: 28px; text-align: right; }
+
+    /* Bottom sheet modal */
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; display: none; align-items: flex-end; justify-content: center; }
+    .overlay.open { display: flex; }
+    .sheet {
+      background: var(--card); width: 100%; max-width: 430px;
+      border-radius: 20px 20px 0 0; padding: 12px 20px calc(var(--safe-bottom) + 20px);
+      max-height: 88vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    }
+    .sheet-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+    .sheet-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .sheet-sub { font-size: 13px; color: var(--text2); margin-bottom: 16px; }
+    .days-row { display: flex; gap: 6px; margin-bottom: 14px; }
+    .day-btn {
+      flex: 1; height: 36px; border-radius: 10px; border: 1px solid var(--border);
+      background: var(--bg); font-size: 12px; font-weight: 500; color: var(--text2);
+      cursor: pointer; font-family: inherit; transition: all 0.15s;
+    }
+    .day-btn.done { background: var(--accent-light); color: var(--accent-dark); border-color: var(--accent); }
+    .day-btn.today { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+    /* Slot picker */
+    .slot-picker { background: var(--card); border-radius: 14px; padding: 14px; margin-top: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: none; }
+    .slot-picker-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: var(--text); }
+    .slot-opts { display: flex; flex-direction: column; gap: 6px; }
+    .slot-opt {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+      border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 500;
+      color: white; transition: opacity 0.15s;
+    }
+    .slot-opt:active { opacity: 0.8; }
+    .slot-clear { margin-top: 6px; width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 10px; background: none; font-size: 13px; color: var(--text2); cursor: pointer; font-family: inherit; }
+
+    /* Range slider */
+    input[type=range] { -webkit-appearance: none; width: 100%; height: 4px; border-radius: 2px; background: var(--border); outline: none; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+
+    .toast { position: fixed; top: calc(var(--safe-top) + 60px); left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 500; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="header-row">
+      <h1>My Goals 🎯</h1>
+      <span class="badge" id="active-badge">6 active</span>
+    </div>
+    <div class="header-date" id="today-date"></div>
+  </div>
+
+  <div class="content">
+
+    <!-- GOALS VIEW -->
+    <div class="view active" id="view-goals">
+      <div class="section-label">Annual goals 2025–26</div>
+      <div id="goals-list"></div>
+    </div>
+
+    <!-- TIME VIEW -->
+    <div class="view" id="view-time">
+      <div class="time-header">
+        <div class="time-title">Today's Schedule</div>
+        <button class="clear-btn" onclick="clearDay()">Clear all</button>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="time-grid" id="time-grid"></div>
+      <div class="slot-picker" id="slot-picker">
+        <div class="slot-picker-title" id="slot-picker-title">Assign this slot</div>
+        <div class="slot-opts" id="slot-opts"></div>
+        <button class="slot-clear" onclick="clearSlot()">✕ Remove assignment</button>
+      </div>
+    </div>
+
+    <!-- CHECK-IN VIEW -->
+    <div class="view" id="view-checkin">
+      <div class="section-label">Daily check-in — <span id="ci-date"></span></div>
+      <div id="checkin-list"></div>
+      <button class="save-btn" onclick="saveCheckin()">Save Today's Check-in ✓</button>
+      <div style="height:8px;"></div>
+    </div>
+
+    <!-- STATS VIEW -->
+    <div class="view" id="view-stats">
+      <div class="section-label">Overview</div>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-val" style="color:var(--accent);" id="stat-checkins">0</div>
+          <div class="stat-lbl">Days checked in</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" style="color:var(--amber);" id="stat-streak">0🔥</div>
+          <div class="stat-lbl">Best streak</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-hours">0h</div>
+          <div class="stat-lbl">AI study time</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" style="color:var(--purple);" id="stat-kid">0h</div>
+          <div class="stat-lbl">Kid time logged</div>
+        </div>
+      </div>
+
+      <div class="section-label">7-day completion</div>
+      <div class="review-card">
+        <div id="week-bars"></div>
+      </div>
+
+      <div class="section-label">Weekly review</div>
+      <div class="review-card">
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+          <div>✅ Review done: <strong style="color:var(--text);">Yes</strong></div>
+          <div>🚧 Main friction: <strong style="color:var(--text);">Technical coding gaps</strong></div>
+          <div>🎯 Next week focus: <strong style="color:var(--text);">Deep work blocks</strong></div>
+        </div>
+        <textarea class="note-input" rows="3" placeholder="Reflections, improvements, learnings..." id="weekly-notes"></textarea>
+      </div>
+    </div>
+
+  </div><!-- end content -->
+
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="switchTab('goals', this)">
+      <div class="nav-icon">🎯</div>
+      <div class="nav-label">Goals</div>
+      <div class="nav-dot"></div>
+    </div>
+    <div class="nav-item" onclick="switchTab('time', this)">
+      <div class="nav-icon">🕐</div>
+      <div class="nav-label">Time</div>
+      <div class="nav-dot"></div>
+    </div>
+    <div class="nav-item" onclick="switchTab('checkin', this)">
+      <div class="nav-icon">✅</div>
+      <div class="nav-label">Check-in</div>
+      <div class="nav-dot"></div>
+    </div>
+    <div class="nav-item" onclick="switchTab('stats', this)">
+      <div class="nav-icon">📊</div>
+      <div class="nav-label">Stats</div>
+      <div class="nav-dot"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Goal detail sheet -->
+<div class="overlay" id="goal-overlay" onclick="closeSheet('goal-overlay')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="sheet-title"></div>
+    <div class="sheet-sub" id="sheet-sub"></div>
+    <div class="section-label">Weekly check-in days</div>
+    <div class="days-row" id="sheet-days"></div>
+    <div class="section-label">Progress %</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+      <input type="range" min="0" max="100" step="1" id="sheet-slider" oninput="document.getElementById('sheet-pct').textContent=this.value+'%'">
+      <span id="sheet-pct" style="font-size:16px;font-weight:700;color:var(--accent);min-width:42px;">0%</span>
+    </div>
+    <div class="section-label">Friction / blockers</div>
+    <textarea class="note-input" rows="2" id="sheet-friction" placeholder="What's slowing you down?"></textarea>
+    <div class="section-label" style="margin-top:10px;">Rewards on completion</div>
+    <textarea class="note-input" rows="2" id="sheet-reward" placeholder="How will you celebrate?"></textarea>
+    <div class="section-label" style="margin-top:10px;">Notes / learnings</div>
+    <textarea class="note-input" rows="3" id="sheet-notes" placeholder="Reflection, improvements..."></textarea>
+    <button class="save-btn" onclick="saveGoal()" style="margin-top:16px;">Save Changes</button>
+    <button onclick="closeSheet('goal-overlay')" style="width:100%;margin-top:8px;padding:12px;background:none;border:none;font-size:15px;color:var(--text2);cursor:pointer;font-family:inherit;">Cancel</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────
+const GOALS = [
+  {id:0, emoji:'🤖', title:'Agentic AI Specialist', sub:'Master AI in 90 days', why:'Secure 1 Crore+ job in next 3 months', friction:'Weak in technical coding', reward:'Celebrate with family dinner', color:'teal', colorVar:'--accent', pct:12, streak:4},
+  {id:1, emoji:'👶', title:'Teach My Kid', sub:'Survival skills · 1hr/day', why:'Bond with autistic child & enable growth', friction:'Job instability distracts', reward:'Fun day out together', color:'purple', colorVar:'--purple', pct:8, streak:2},
+  {id:2, emoji:'💰', title:'Secure 1 Crore+ Job', sub:'Career goal · 3 months', why:'Better quality of life for family', friction:'Market competition is stiff', reward:'Family vacation', color:'amber', colorVar:'--amber', pct:5, streak:1},
+  {id:3, emoji:'🏠', title:'Home Loan to 75%', sub:'Reduce debt this year', why:'Financial freedom & security', friction:'Current expenses are high', reward:'Redecorate a room', color:'coral', colorVar:'--coral', pct:3, streak:0},
+  {id:4, emoji:'📚', title:'Read Fast & Lead', sub:'Speed reading + leadership prep', why:'Career growth & promotions', friction:'Unable to prioritise over job', reward:'New book collection', color:'green', colorVar:'--green', pct:7, streak:0},
+  {id:5, emoji:'⏰', title:'Wake Up at 5 AM', sub:'Morning routine daily', why:'Family time + focused mornings', friction:'Hard to be consistent', reward:'New smartwatch', color:'pink', colorVar:'--pink', pct:15, streak:6}
+];
+
+const DAYS7 = ['Mo','Tu','We','Th','Fr','Sa','Su'];
+const COLORS = {teal:'#1D9E75',purple:'#534AB7',amber:'#BA7517',coral:'#D85A30',green:'#3B6D11',pink:'#993556'};
+const LIGHT_BG = {teal:'#E1F5EE',purple:'#EEEDFE',amber:'#FAEEDA',coral:'#FAECE7',green:'#EAF3DE',pink:'#FBEAF0'};
+
+// ── STORAGE ───────────────────────────────────────────────────────────────
+function load(key, def) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch(e) { return def; }
+}
+function save(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+}
+
+let state = load('goalState', {
+  goals: GOALS.map(g => ({...g})),
+  checkins: {},
+  slots: {},
+  streaks: {},
+  weeklyNotes: '',
+});
+
+// Merge any missing goals
+GOALS.forEach(g => {
+  if (!state.goals.find(sg => sg.id === g.id)) state.goals.push({...g});
+});
+
+function persist() { save('goalState', state); }
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+const todayKey = new Date().toISOString().slice(0,10);
+const todayDow = (new Date().getDay() + 6) % 7; // 0=Mon
+
+document.addEventListener('DOMContentLoaded', () => {
+  const now = new Date();
+  document.getElementById('today-date').textContent = now.toLocaleDateString('en-IN', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('ci-date').textContent = now.toLocaleDateString('en-IN', {day:'numeric',month:'short'});
+  if (document.getElementById('weekly-notes')) document.getElementById('weekly-notes').value = state.weeklyNotes||'';
+  renderGoals();
+  renderCheckins();
+  buildTimeGrid();
+  buildLegend();
+  buildWeekBars();
+  updateStats();
+});
+
+// ── TAB SWITCHING ─────────────────────────────────────────────────────────
+function switchTab(tab, el) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('view-' + tab).classList.add('active');
+  if(el) el.classList.add('active');
+  if(tab === 'stats') updateStats();
+}
+
+// ── GOALS LIST ────────────────────────────────────────────────────────────
+function renderGoals() {
+  const list = document.getElementById('goals-list');
+  list.innerHTML = '';
+  state.goals.forEach(g => {
+    const div = document.createElement('div');
+    div.className = 'goal-card';
+    div.onclick = () => openGoalSheet(g.id);
+    const streak = g.streak > 0 ? `<span class="streak" style="background:${LIGHT_BG[g.color]};color:${COLORS[g.color]};">🔥 ${g.streak} day streak</span>` : '';
+    div.innerHTML = `
+      <div class="goal-row">
+        <div class="goal-emoji" style="background:${LIGHT_BG[g.color]};">${g.emoji}</div>
+        <div class="goal-info">
+          <div class="goal-title">${g.title}</div>
+          <div class="goal-sub">${g.sub}</div>
+        </div>
+        <div class="goal-pct" style="color:${COLORS[g.color]};">${g.pct}%</div>
+      </div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${g.pct}%;background:${COLORS[g.color]};"></div></div>
+      ${streak}
+    `;
+    list.appendChild(div);
+  });
+}
+
+// ── GOAL DETAIL SHEET ─────────────────────────────────────────────────────
+let currentGoalId = null;
+let sheetDays = {};
+
+function openGoalSheet(id) {
+  const g = state.goals.find(x => x.id === id);
+  currentGoalId = id;
+  document.getElementById('sheet-title').textContent = g.emoji + ' ' + g.title;
+  document.getElementById('sheet-sub').textContent = g.why;
+  document.getElementById('sheet-friction').value = g.friction || '';
+  document.getElementById('sheet-reward').value = g.reward || '';
+  document.getElementById('sheet-notes').value = g.notes || '';
+  document.getElementById('sheet-slider').value = g.pct;
+  document.getElementById('sheet-pct').textContent = g.pct + '%';
+
+  sheetDays = load('days_' + id, {});
+  const daysRow = document.getElementById('sheet-days');
+  daysRow.innerHTML = '';
+  DAYS7.forEach((d, i) => {
+    const b = document.createElement('button');
+    b.className = 'day-btn' + (sheetDays[i] ? ' done' : '') + (i === todayDow ? ' today' : '');
+    b.textContent = d;
+    b.onclick = () => {
+      sheetDays[i] = !sheetDays[i];
+      b.className = 'day-btn' + (sheetDays[i] ? ' done' : '') + (i === todayDow ? ' today' : '');
+      save('days_' + id, sheetDays);
+    };
+    daysRow.appendChild(b);
+  });
+
+  document.getElementById('goal-overlay').classList.add('open');
+}
+
+function saveGoal() {
+  const g = state.goals.find(x => x.id === currentGoalId);
+  g.pct = parseInt(document.getElementById('sheet-slider').value);
+  g.friction = document.getElementById('sheet-friction').value;
+  g.reward = document.getElementById('sheet-reward').value;
+  g.notes = document.getElementById('sheet-notes').value;
+  persist();
+  renderGoals();
+  closeSheet('goal-overlay');
+  showToast('Goal updated ✓');
+}
+
+function closeSheet(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// ── CHECK-IN ──────────────────────────────────────────────────────────────
+const CI_GOALS = [
+  {id:0, emoji:'🤖', title:'Agentic AI Specialist', meta:'Daily research', q:'Did you research / study AI today?', opts:['✅ Yes, fully','⚡ Partially','❌ Not today'], types:['yes','warn','bad'], note:true},
+  {id:1, emoji:'👶', title:'Teach My Kid', meta:'1 hour target', q:'Did you spend 1 hour with your child?', opts:['✅ Full hour','⚡ 30 minutes','❌ Missed'], types:['yes','warn','bad'], note:true},
+  {id:2, emoji:'⏰', title:'5 AM Wake Up', meta:'Morning routine', q:'Did you wake up by 5 AM?', opts:['✅ Yes!','⚡ By 6 AM','❌ Overslept'], types:['yes','warn','bad'], note:false},
+  {id:3, emoji:'💰', title:'Job Search', meta:'1 Crore+ goal', q:'Any career progress today?', opts:['✅ Applied/Networked','⚡ Researched','❌ No progress'], types:['yes','warn','bad'], note:true},
+  {id:4, emoji:'📚', title:'Reading & Leadership', meta:'Daily reading goal', q:'Did you read or study leadership today?', opts:['✅ Yes!','⚡ A little','❌ Skipped'], types:['yes','warn','bad'], note:false},
+];
+
+let ciSelections = {};
+
+function renderCheckins() {
+  const list = document.getElementById('checkin-list');
+  list.innerHTML = '';
+  const todayCi = load('ci_' + todayKey, {});
+  CI_GOALS.forEach(ci => {
+    const saved = todayCi[ci.id] || {};
+    const card = document.createElement('div');
+    card.className = 'ci-card';
+    card.innerHTML = `
+      <div class="ci-head">
+        <span class="ci-emoji">${ci.emoji}</span>
+        <div><div class="ci-title">${ci.title}</div><div class="ci-meta">${ci.meta}</div></div>
+      </div>
+      <div class="ci-q">${ci.q}</div>
+      <div class="ci-opts" id="ci-opts-${ci.id}">
+        ${ci.opts.map((o,i) => `<button class="ci-opt ${saved.sel===i ? ci.types[i] : ''}" onclick="selectCI(${ci.id},${i},this,'${ci.types[i]}')">${o}</button>`).join('')}
+      </div>
+      ${ci.note ? `<textarea class="note-input" rows="2" id="ci-note-${ci.id}" placeholder="Notes, blockers, learnings...">${saved.note||''}</textarea>` : ''}
+    `;
+    list.appendChild(card);
+    if(saved.sel !== undefined) ciSelections[ci.id] = saved.sel;
+  });
+}
+
+function selectCI(id, idx, btn, type) {
+  const opts = document.querySelectorAll(`#ci-opts-${id} .ci-opt`);
+  opts.forEach(b => b.className = 'ci-opt');
+  btn.className = 'ci-opt ' + type;
+  ciSelections[id] = idx;
+}
+
+function saveCheckin() {
+  const data = {};
+  CI_GOALS.forEach(ci => {
+    data[ci.id] = {
+      sel: ciSelections[ci.id],
+      note: document.getElementById('ci-note-' + ci.id) ? document.getElementById('ci-note-' + ci.id).value : ''
+    };
+  });
+  save('ci_' + todayKey, data);
+
+  // update streak for goals with "yes"
+  CI_GOALS.forEach(ci => {
+    if(ciSelections[ci.id] === 0) {
+      const g = state.goals.find(x => x.id === ci.id);
+      if(g) g.streak = (g.streak||0) + 1;
+    }
+  });
+  persist();
+  showToast('Check-in saved ✓');
+}
+
+// ── TIME GRID ─────────────────────────────────────────────────────────────
+let selectedSlotKey = null;
+
+function buildLegend() {
+  const leg = document.getElementById('legend');
+  leg.innerHTML = '';
+  state.goals.forEach(g => {
+    leg.innerHTML += `<div class="legend-item"><div class="leg-dot" style="background:${COLORS[g.color]};"></div>${g.emoji} ${g.title.split(' ').slice(0,2).join(' ')}</div>`;
+  });
+}
+
+function buildTimeGrid() {
+  const grid = document.getElementById('time-grid');
+  grid.innerHTML = '';
+  const slots = load('slots_' + todayKey, {});
+
+  for(let h = 5; h < 23; h++) {
+    for(let m = 0; m < 60; m += 30) {
+      const key = `${h}:${m < 10 ? '0'+m : m}`;
+      const lbl = document.createElement('div');
+      lbl.className = 't-label';
+      lbl.textContent = m === 0 ? `${h > 12 ? h-12 : h}${h < 12 ? 'am' : 'pm'}` : '';
+
+      const blk = document.createElement('div');
+      blk.className = 't-block';
+      blk.id = 'slot-' + key.replace(':','-');
+
+      const assigned = slots[key];
+      if(assigned !== undefined) {
+        const g = state.goals[assigned];
+        blk.className = 't-block filled ' + g.color;
+        blk.textContent = g.emoji + ' ' + g.title.split(' ').slice(0,2).join(' ');
+      }
+
+      blk.onclick = () => openSlotPicker(key);
+      grid.appendChild(lbl);
+      grid.appendChild(blk);
+    }
+  }
+}
+
+function openSlotPicker(key) {
+  selectedSlotKey = key;
+  const [h, m] = key.split(':');
+  const nextM = parseInt(m) + 30;
+  const nextH = nextM >= 60 ? parseInt(h)+1 : h;
+  const nm = nextM >= 60 ? '00' : (nextM < 10 ? '0'+nextM : nextM);
+  document.getElementById('slot-picker-title').textContent = `${key} – ${nextH}:${nm}`;
+  const opts = document.getElementById('slot-opts');
+  opts.innerHTML = '';
+  const slots = load('slots_' + todayKey, {});
+  state.goals.forEach((g, i) => {
+    const div = document.createElement('div');
+    div.className = 'slot-opt';
+    div.style.background = COLORS[g.color];
+    div.style.opacity = slots[key] === i ? '1' : '0.8';
+    div.innerHTML = `<span style="font-size:18px;">${g.emoji}</span>${g.title}`;
+    div.onclick = () => assignSlot(i);
+    opts.appendChild(div);
+  });
+  document.getElementById('slot-picker').style.display = 'block';
+  document.getElementById('slot-picker').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function assignSlot(goalIdx) {
+  const slots = load('slots_' + todayKey, {});
+  slots[selectedSlotKey] = goalIdx;
+  save('slots_' + todayKey, slots);
+  const g = state.goals[goalIdx];
+  const id = 'slot-' + selectedSlotKey.replace(':','-');
+  const blk = document.getElementById(id);
+  blk.className = 't-block filled ' + g.color;
+  blk.textContent = g.emoji + ' ' + g.title.split(' ').slice(0,2).join(' ');
+  document.getElementById('slot-picker').style.display = 'none';
+}
+
+function clearSlot() {
+  if(!selectedSlotKey) return;
+  const slots = load('slots_' + todayKey, {});
+  delete slots[selectedSlotKey];
+  save('slots_' + todayKey, slots);
+  const blk = document.getElementById('slot-' + selectedSlotKey.replace(':','-'));
+  blk.className = 't-block';
+  blk.textContent = '';
+  document.getElementById('slot-picker').style.display = 'none';
+}
+
+function clearDay() {
+  save('slots_' + todayKey, {});
+  document.querySelectorAll('.t-block').forEach(b => { b.className = 't-block'; b.textContent = ''; });
+  document.getElementById('slot-picker').style.display = 'none';
+  showToast('Day cleared');
+}
+
+// ── STATS ─────────────────────────────────────────────────────────────────
+function updateStats() {
+  const checkinDays = Object.keys(localStorage).filter(k => k.startsWith('ci_')).length;
+  document.getElementById('stat-checkins').textContent = checkinDays;
+
+  const maxStreak = Math.max(...state.goals.map(g => g.streak || 0));
+  document.getElementById('stat-streak').textContent = maxStreak + '🔥';
+
+  const slots = load('slots_' + todayKey, {});
+  let aiH = 0, kidH = 0;
+  Object.values(slots).forEach(idx => {
+    if(idx === 0) aiH += 0.5;
+    if(idx === 1) kidH += 0.5;
+  });
+  document.getElementById('stat-hours').textContent = aiH + 'h';
+  document.getElementById('stat-kid').textContent = kidH + 'h';
+}
+
+function buildWeekBars() {
+  const container = document.getElementById('week-bars');
+  container.innerHTML = '';
+  const names = state.goals.map(g => g.emoji);
+  const completions = [4, 2, 1, 0, 3, 6];
+  state.goals.forEach((g, i) => {
+    const pct = Math.round(completions[i] / 7 * 100);
+    const row = document.createElement('div');
+    row.className = 'week-bar-row';
+    row.innerHTML = `
+      <div class="week-bar-name">${g.emoji}</div>
+      <div class="week-bar-track"><div class="week-bar-fill" style="width:${pct}%;background:${COLORS[g.color]};"></div></div>
+      <div class="week-bar-count">${completions[i]}/7</div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// Save weekly notes on change
+document.addEventListener('input', e => {
+  if(e.target.id === 'weekly-notes') {
+    state.weeklyNotes = e.target.value;
+    persist();
+  }
+});
+</script>
+
+<link rel="manifest" href="manifest.json">
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
